@@ -9,6 +9,7 @@
             "name": "Nets"
         }
     ],
+    "minimum-stability": "stable",
     "require": {
         "shopware/core": "*"
     },
