@@ -1,0 +1,31 @@
+{
+    "name": "nets/checkout",
+    "description": "Payment plugin for Nets",
+    "version": "1.0.0",
+    "type": "shopware-platform-plugin",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Nets"
+        }
+    ],
+    "require": {
+        "shopware/core": "*"
+    },
+    "extra": {
+        "shopware-plugin-class": "Nets\\Checkout\\Checkout",
+        "label": {
+            "de-DE": "Payment plugin for Nets",
+            "en-GB": "Payment plugin for Nets"
+        },
+        "description": {
+            "de-DE": "Payment plugin for Nets",
+            "en-GB": "Payment plugin for Nets"
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Nets\\Checkout\\": "src/"
+        }
+    }
+}
