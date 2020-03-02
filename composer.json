@@ -14,7 +14,7 @@
 	"curl/curl": "*"
     },
     "extra": {
-        "shopware-plugin-class": "Nets\\Checkout\\Checkout",
+        "shopware-plugin-class": "Nets\\Checkout\\NetsCheckout",
         "label": {
             "de-DE": "Payment plugin for Nets",
             "en-GB": "Payment plugin for Nets"
