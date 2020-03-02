@@ -10,7 +10,8 @@
         }
     ],
     "require": {
-        "shopware/core": "*"
+        "shopware/core": "*",
+	"curl/curl": "*"
     },
     "extra": {
         "shopware-plugin-class": "Nets\\Checkout\\Checkout",
