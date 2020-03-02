@@ -15,6 +15,9 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use \Nets\Checkout\Service\Easy\CheckoutService;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
+use \Nets\Checkout\Service\Easy\Api\Exception\EasyApiException;
+use \Nets\Checkout\Service\Easy\Api\Exception\EasyApiExceptionHandler;
+
 /**
  * Description of NetsCheckout
  *
@@ -32,10 +35,13 @@ class Checkout implements AsynchronousPaymentHandlerInterface {
      */
     private $systemConfigService;
 
-    public function __construct(CheckoutService $checkout, SystemConfigService $systemConfigService)
+    private $easyApiExceptionHandler;
+
+    public function __construct(CheckoutService $checkout, SystemConfigService $systemConfigService, EasyApiExceptionHandler $easyApiExceptionHandler)
     {
         $this->systemConfigService = $systemConfigService;
         $this->checkout = $checkout;
+        $this->easyApiExceptionHandler = $easyApiExceptionHandler;
     }
 
     public function finalize(AsyncPaymentTransactionStruct $transaction, Request $request, SalesChannelContext $salesChannelContext): void {
@@ -43,16 +49,16 @@ class Checkout implements AsynchronousPaymentHandlerInterface {
     }
 
     public function pay(AsyncPaymentTransactionStruct $transaction, RequestDataBag $dataBag, SalesChannelContext $salesChannelContext): RedirectResponse {
-        $result = $this->checkout->createPayment($transaction->getOrder(), $this->systemConfigService);
 
-        if (201 == $result->getHttpStatus() || 200 == $result->getHttpStatus())  {
-            $resultDecoded = json_decode(  $result->getResponse(), true );
+        try {
+            $result = $this->checkout->createPayment($transaction->getOrder(), $this->systemConfigService);
+            $resultDecoded = json_decode($result, true);
             $resultDecoded['hostedPaymentPageUrl'];
-        } else {
-            return new RedirectResponse('https://vonnahuy.com');
+            return new RedirectResponse($resultDecoded['hostedPaymentPageUrl']);
+        } catch(EasyApiException $e) {
+            $this->easyApiExceptionHandler->handle($e);
         }
-
-        return new RedirectResponse($resultDecoded['hostedPaymentPageUrl']);
+        return new RedirectResponse('/');
     }
 
 }

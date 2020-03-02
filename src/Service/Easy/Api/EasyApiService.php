@@ -3,6 +3,7 @@
 namespace Nets\Checkout\Service\Easy\Api;
 
 use Nets\Checkout\Service\Easy\Api\Client;
+use Nets\Checkout\Service\Easy\Api\Exception\EasyApiException;
 
 /**
  * Description of EasyApiService
@@ -56,7 +57,7 @@ class EasyApiService {
       $this->client->setHeader('commercePlatformTag:', 'easy_shopify_inject');
       $url = $this->getCreatePaymentUrl();
       $this->client->post($url, $data);
-      return $this->client;
+      return $this->handleResponse($this->client);
     }
 
     /**
@@ -94,7 +95,7 @@ class EasyApiService {
       $this->handleResponse($this->client);
     }
 
-    protected function handleResponse(\App\Service\Api\Client $client) {
+    protected function handleResponse(\Nets\Checkout\Service\Easy\Api\Client $client) {
       if($client->isSuccess()) {
           return $client->getResponse();
       } else {
@@ -102,7 +103,7 @@ class EasyApiService {
           if(0 == $client->getHttpStatus()) {
               $errorMessage = $client->getErrorMessage();
           }
-          //throw new \App\Exceptions\EasyException($errorMessage, $client->getHttpStatus());
+          throw new EasyApiException($errorMessage, $client->getHttpStatus());
       }
     }
 

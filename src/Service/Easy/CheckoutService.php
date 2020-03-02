@@ -12,6 +12,8 @@ use Shopware\Core\Checkout\Order\OrderEntity;
 
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 
+use Nets\Checkout\Service\Easy\Api\Exception\EasyApiException;
+
 
 class CheckoutService
 {
@@ -30,18 +32,7 @@ class CheckoutService
         $this->easyApiService->setEnv('test');
         $this->easyApiService->setAuthorizationKey($secretKey);
         $payload = json_encode($this->collectRequestParams($orderEntity,  $systemConfigService));
-
-        //var_dump($payload);
-
         return $this->easyApiService->createPayment($payload);
-        /*
-       echo "<pre>";
-            var_dump( $result->getHttpStatus() );
-            echo $result->getResponse();
-            var_dump($this->collectRequestParams($orderEntity,  $systemConfigService));
-
-       echo "</pre>";
-       */
     }
 
     /*
@@ -56,7 +47,7 @@ class CheckoutService
                 'reference' =>  $orderEntity->getOrderNumber(),
               ]];
 
-        $data['checkout']['returnUrl'] = 'https://korrespondent.net';
+        $data['checkout']['returnUrl'] = 'http://shopware.local/nets/caheckout/validate';
         $data['checkout']['integrationType'] = 'HostedPaymentPage';
         $data['checkout']['termsUrl'] = $systemConfigService->get( 'NetsCheckout.config.termsUrl', $orderEntity->getSalesChannelId());
 
