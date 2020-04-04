@@ -2,8 +2,10 @@
 
 namespace Nets\Checkout\Service\Easy\Api;
 
+use GuzzleHttp\Exception\RequestException;
 use Nets\Checkout\Service\Easy\Api\Client;
 use Nets\Checkout\Service\Easy\Api\Exception\EasyApiException;
+use Nets\Checkout\Service\Easy\Api\Payment;
 
 /**
  * Description of EasyApiService
@@ -31,8 +33,6 @@ class EasyApiService {
 
     public function __construct(Client $client) {
       $this->client = $client;
-      $this->client->setHeader('Content-Type', 'text/json');
-      $this->client->setHeader('Accept', 'test/json');
       $this->setEnv(self::ENV_LIVE);
     }
 
@@ -56,8 +56,7 @@ class EasyApiService {
     public function createPayment(string $data) {
       $this->client->setHeader('commercePlatformTag:', 'easy_shopify_inject');
       $url = $this->getCreatePaymentUrl();
-      $this->client->post($url, $data);
-      return $this->handleResponse($this->client);
+      return $this->handleResponse($this->client->post($url, $data));
     }
 
     /**
@@ -67,8 +66,7 @@ class EasyApiService {
      */
     public function getPayment(string $paymentId) {
       $url = $this->getGetPaymentUrl($paymentId);
-      $this->client->get($url);
-      //return new \App\Payment($this->handleResponse($this->client));
+      return new Payment($this->handleResponse($this->client->get($url)));
     }
 
    public function updateReference(string $paymentId, string $data) {
@@ -95,16 +93,11 @@ class EasyApiService {
       $this->handleResponse($this->client);
     }
 
-    protected function handleResponse(\Nets\Checkout\Service\Easy\Api\Client $client) {
-      if($client->isSuccess()) {
-          return $client->getResponse();
-      } else {
-          $errorMessage = $client->getResponse();
-          if(0 == $client->getHttpStatus()) {
-              $errorMessage = $client->getErrorMessage();
-          }
-          throw new EasyApiException($errorMessage, $client->getHttpStatus());
-      }
+    protected function handleResponse($response) {
+        $statusCode = $response->getStatusCode();
+        if (200 == $statusCode || 201 == $statusCode) {
+              return (string)$response->getBody();
+        }
     }
 
     protected function getCreatePaymentUrl() {

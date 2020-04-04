@@ -2,9 +2,9 @@
 
 namespace Nets\Checkout\Service\Easy\Api\Exception;
 
+use Monolog\Handler\StreamHandler;
 use \Nets\Checkout\Service\Easy\Api\Exception\EasyApiException;
-
-
+use \Symfony\Component\HttpKernel\KernelInterface;
 
 /**
  * Description of EasyExceptionHandler
@@ -15,8 +15,13 @@ class EasyApiExceptionHandler {
 
     private $logger;
 
-    public function __construct(\Psr\Log\LoggerInterface $logger) {
+    private $kernel;
+
+    const LOG_FILE_NAME = 'nets-easy-log.log';
+
+    public function __construct(\Psr\Log\LoggerInterface $logger, KernelInterface $kernel) {
         $this->logger = $logger;
+        $this->kernel = $kernel;
     }
 
     public function handle(EasyApiException $e, array $add = null) {
@@ -43,18 +48,10 @@ class EasyApiExceptionHandler {
                     $message .= 'Curl error: ' . $e->getMessage();
                 break;
         }
-
-        error_log($message);
-
+        $this->logger->pushHandler(new StreamHandler($this->kernel->getLogDir() . '/' . self::LOG_FILE_NAME ));
         $this->logger->critical( $message );
-
-        //$this->logger->error($prefixMessage . $message . PHP_EOL . $stackTrace);
-        //syslog(LOG_CRIT, 'shopify.easy.exception: ' . $prefixMessage . $message . PHP_EOL . $stackTrace);
-        //if($add) {
-         //   $this->logger->debug($add);
-          //  syslog(LOG_CRIT, print_r($add, true));
-        //}
-       return $message;
+        $this->logger->popHandler();
+        return $message;
     }
 
     /**

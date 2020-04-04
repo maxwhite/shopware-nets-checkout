@@ -17,6 +17,9 @@ use \Nets\Checkout\Service\Easy\CheckoutService;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use \Nets\Checkout\Service\Easy\Api\Exception\EasyApiException;
 use \Nets\Checkout\Service\Easy\Api\Exception\EasyApiExceptionHandler;
+use \Nets\Checkout\Service\Easy\Api\EasyApiService;
+use Shopware\Core\Checkout\Payment\Exception\PaymentProcessException;
+
 
 /**
  * Description of NetsCheckout
@@ -37,28 +40,74 @@ class Checkout implements AsynchronousPaymentHandlerInterface {
 
     private $easyApiExceptionHandler;
 
-    public function __construct(CheckoutService $checkout, SystemConfigService $systemConfigService, EasyApiExceptionHandler $easyApiExceptionHandler)
-    {
+    private $easyApiService;
+
+    /**
+     * @var OrderTransactionStateHandler
+     */
+    private $transactionStateHandler;
+
+    public function __construct(CheckoutService $checkout,
+                                SystemConfigService $systemConfigService,
+                                EasyApiExceptionHandler $easyApiExceptionHandler,
+                                OrderTransactionStateHandler $transactionStateHandler,
+                                EasyApiService $easyApiService)     {
         $this->systemConfigService = $systemConfigService;
         $this->checkout = $checkout;
         $this->easyApiExceptionHandler = $easyApiExceptionHandler;
+        $this->transactionStateHandler = $transactionStateHandler;
+        $this->easyApiService = $easyApiService;
     }
 
     public function finalize(AsyncPaymentTransactionStruct $transaction, Request $request, SalesChannelContext $salesChannelContext): void {
+        $transactionId = $transaction->getOrderTransaction()->getId();
+        $salesChannelId = $transaction->getOrder()->getSalesChannelId();
+        $environment = $this->systemConfigService->get('NetsCheckout.config.environment', $salesChannelId) ?? 'test';
+        if('live' ==  $environment) {
+            $secretKey = $this->systemConfigService->get('NetsCheckout.config.liveSecretKey', $salesChannelId);
+        }
+        if('test' ==  $environment) {
+            $secretKey = $this->systemConfigService->get('NetsCheckout.config.testSecretKey', $salesChannelId);
+        }
+
+        try {
+            $this->easyApiService->setEnv($environment);
+            $this->easyApiService->setAuthorizationKey($secretKey);
+            $payment = $this->easyApiService->getPayment($_REQUEST['paymentid']);
+            if (empty($payment->getReservedAmount())) {
+                throw new CustomerCanceledAsyncPaymentException(
+                    $transactionId,
+                    'Customer canceled the payment on the Easy payment page'
+                );
+            }
+        }catch (EasyApiException $ex) {
+            throw new CustomerCanceledAsyncPaymentException(
+                $transactionId,
+                'Customer canceled the payment on the Easy payment page'
+            );
+        }
+
+        $paymentState = $request->query->getAlpha('status');
+
+        $context = $salesChannelContext->getContext();
+        if (true) {
+            // Payment completed, set transaction status to "paid"
+            $this->transactionStateHandler->pay($transaction->getOrderTransaction()->getId(), $context);
+        } else {
+            // Payment not completed, set transaction status to "open"
+            $this->transactionStateHandler->reopen($transaction->getOrderTransaction()->getId(), $context);
+        }
         
     }
 
     public function pay(AsyncPaymentTransactionStruct $transaction, RequestDataBag $dataBag, SalesChannelContext $salesChannelContext): RedirectResponse {
-
         try {
-            $result = $this->checkout->createPayment($transaction->getOrder(), $this->systemConfigService);
-            $resultDecoded = json_decode($result, true);
-            $resultDecoded['hostedPaymentPageUrl'];
-            return new RedirectResponse($resultDecoded['hostedPaymentPageUrl']);
+            $result = $this->checkout->createPayment($transaction, $this->systemConfigService, $salesChannelContext);
+            $PaymentCreateResult = json_decode($result, true);
         } catch(EasyApiException $e) {
             $this->easyApiExceptionHandler->handle($e);
+            throw new AsyncPaymentProcessException($transaction->getOrderTransaction()->getId() , $e->getMessage());
         }
-        return new RedirectResponse('/');
+        return new RedirectResponse($PaymentCreateResult['hostedPaymentPageUrl']);
     }
-
 }

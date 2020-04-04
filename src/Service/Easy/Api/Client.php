@@ -2,6 +2,7 @@
 
 namespace Nets\Checkout\Service\Easy\Api;
 
+use Nets\Checkout\Service\Easy\Api\Exception\EasyApiException;
 /**
  * Description of Client
  *
@@ -10,21 +11,31 @@ namespace Nets\Checkout\Service\Easy\Api;
 class Client {
    
     private $client;
+    private $headers = [];
     
     public function __construct( ) {
         $this->init();
     }
     
     protected function init() {
-         $this->client = new \Curl\Curl();
+        $params = ['headers' =>
+            ['Content-Type' => 'text/json',
+             'Accept' => 'test/json']];
+        $this->client = new \GuzzleHttp\Client($params);
     }
     
     public function post($url, $data = array()) {
-        return $this->client->post($url, $data);
+        try {
+            $params = ['headers' => $this->headers,
+                       'body' => $data];
+            return $this->client->request('POST', $url, $params);
+        }catch(\GuzzleHttp\Exception\GuzzleException $ex) {
+            throw new EasyApiException($ex->getMessage(), $ex->getCode());
+        }
     }
     
     public function setHeader($key, $value) {
-        $this->client->setHeader($key, $value);
+        $this->headers[$key] = $value;
     }
     
     public function isSuccess() {
@@ -36,7 +47,12 @@ class Client {
     }
     
     public function get($url, $data = array()) {
-        return $this->client->get($url, $data);
+        try {
+            $params = ['headers' => $this->headers];
+            return $this->client->request('GET', $url, $params);
+        }catch(\GuzzleHttp\Exception\GuzzleException $ex) {
+            throw new EasyApiException($ex->getMessage(), $ex->getCode());
+        }
     }
     
     public function put($url, $data = array(), $payload = false) {
