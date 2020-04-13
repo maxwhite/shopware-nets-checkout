@@ -3,15 +3,14 @@
 <container xmlns="http://symfony.com/schema/dic/services"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
-
     <services>
-
         <service id="Nets\Checkout\Service\Checkout">
             <argument type="service" id="Nets\Checkout\Service\Easy\CheckoutService"/>
             <argument type="service" id="Shopware\Core\System\SystemConfig\SystemConfigService"/>
             <argument type="service" id="Nets\Checkout\Service\Easy\Api\Exception\EasyApiExceptionHandler"/>
             <argument type="service" id="Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler"/>
             <argument type="service" id="Nets\Checkout\Service\Easy\Api\EasyApiService"/>
+            <argument type="service" id="order_transaction.repository"/>
             <tag name="shopware.payment.method.async" />
         </service>
         <service id="Nets\Checkout\Service\Test">
@@ -44,5 +43,11 @@
         <service id="Nets\Checkout\Service\Easy\Api\EasyApiService">
             <argument type="service" id="Nets\Checkout\Service\Easy\Api\Client"/>
         </service>
+
+        <service id="Nets\Checkout\Subscriber\CheckioutFinishPageSubscriber">
+           <argument type="service" id="order.repository"/>
+           <tag name="kernel.event_subscriber" />
+        </service>
+
   </services>
 </container>

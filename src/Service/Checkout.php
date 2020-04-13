@@ -19,6 +19,8 @@ use \Nets\Checkout\Service\Easy\Api\Exception\EasyApiException;
 use \Nets\Checkout\Service\Easy\Api\Exception\EasyApiExceptionHandler;
 use \Nets\Checkout\Service\Easy\Api\EasyApiService;
 use Shopware\Core\Checkout\Payment\Exception\PaymentProcessException;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+
 
 
 /**
@@ -43,6 +45,11 @@ class Checkout implements AsynchronousPaymentHandlerInterface {
     private $easyApiService;
 
     /**
+     * @var EntityRepositoryInterface
+     */
+    private $orderTransactionRepo;
+
+    /**
      * @var OrderTransactionStateHandler
      */
     private $transactionStateHandler;
@@ -51,12 +58,14 @@ class Checkout implements AsynchronousPaymentHandlerInterface {
                                 SystemConfigService $systemConfigService,
                                 EasyApiExceptionHandler $easyApiExceptionHandler,
                                 OrderTransactionStateHandler $transactionStateHandler,
-                                EasyApiService $easyApiService)     {
+                                EasyApiService $easyApiService,
+                                EntityRepositoryInterface $orderTransactionRepo)     {
         $this->systemConfigService = $systemConfigService;
         $this->checkout = $checkout;
         $this->easyApiExceptionHandler = $easyApiExceptionHandler;
         $this->transactionStateHandler = $transactionStateHandler;
         $this->easyApiService = $easyApiService;
+        $this->orderTransactionRepo = $orderTransactionRepo;
     }
 
     public function finalize(AsyncPaymentTransactionStruct $transaction, Request $request, SalesChannelContext $salesChannelContext): void {
@@ -73,7 +82,24 @@ class Checkout implements AsynchronousPaymentHandlerInterface {
         try {
             $this->easyApiService->setEnv($environment);
             $this->easyApiService->setAuthorizationKey($secretKey);
+
+            // it is incorrect check for captured amount
             $payment = $this->easyApiService->getPayment($_REQUEST['paymentid']);
+
+            $transactionId = $transaction->getOrderTransaction()->getId();
+
+
+            $context = $salesChannelContext->getContext();
+
+            $this->orderTransactionRepo->update([[
+                'id' => $transactionId,
+                'customFields' => [
+                    'nets_easy_payment_details' => ['transaction_id' => $_REQUEST['paymentid']],
+                ],
+            ]], $context);
+
+
+
             if (empty($payment->getReservedAmount())) {
                 throw new CustomerCanceledAsyncPaymentException(
                     $transactionId,
@@ -91,13 +117,10 @@ class Checkout implements AsynchronousPaymentHandlerInterface {
 
         $context = $salesChannelContext->getContext();
         if (true) {
-            // Payment completed, set transaction status to "paid"
-            $this->transactionStateHandler->pay($transaction->getOrderTransaction()->getId(), $context);
         } else {
             // Payment not completed, set transaction status to "open"
             $this->transactionStateHandler->reopen($transaction->getOrderTransaction()->getId(), $context);
         }
-        
     }
 
     public function pay(AsyncPaymentTransactionStruct $transaction, RequestDataBag $dataBag, SalesChannelContext $salesChannelContext): RedirectResponse {
