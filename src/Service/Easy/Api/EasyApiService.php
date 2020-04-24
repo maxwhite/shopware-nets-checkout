@@ -49,9 +49,9 @@ class EasyApiService {
     }
 
     /**
-     *
      * @param string $data
-     * @return \Nets\Checkout\Service\Easy\Api\Client
+     * @return string
+     * @throws EasyApiException
      */
     public function createPayment(string $data) {
       $this->client->setHeader('commercePlatformTag:', 'easy_shopify_inject');

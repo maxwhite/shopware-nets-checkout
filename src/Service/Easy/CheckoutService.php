@@ -12,15 +12,22 @@ use Nets\Checkout\Service\Easy\Api\Exception\EasyApiException;
 
 class CheckoutService
 {
-
+    /**
+     * @var EasyApiService
+     */
     private $easyApiService;
 
-    private $salesChannelContext;
-
+    /**
+     * regexp for filtering strings
+     */
     const ALLOWED_CHARACTERS_PATTERN = '/[^\x{00A1}-\x{00AC}\x{00AE}-\x{00FF}\x{0100}-\x{017F}\x{0180}-\x{024F}'
     . '\x{0250}-\x{02AF}\x{02B0}-\x{02FF}\x{0300}-\x{036F}'
     . 'A-Za-z0-9\!\#\$\%\(\)*\+\,\-\.\/\:\;\\=\?\@\[\]\\^\_\`\{\}\~ ]+/u';
 
+    /**
+     * CheckoutService constructor.
+     * @param EasyApiService $easyApiService
+     */
     public function __construct(EasyApiService $easyApiService)
     {
         $this->easyApiService = $easyApiService;
@@ -28,6 +35,13 @@ class CheckoutService
 
     }
 
+    /**
+     * @param AsyncPaymentTransactionStruct $transaction
+     * @param SystemConfigService $systemConfigService
+     * @param SalesChannelContext $salesChannelContext
+     * @return string
+     * @throws EasyApiException
+     */
     public function createPayment(AsyncPaymentTransactionStruct $transaction, SystemConfigService $systemConfigService, SalesChannelContext $salesChannelContext) {
         $salesChannelId = $transaction->getOrder()->getSalesChannelId();
         $environment = $systemConfigService->get('NetsCheckout.config.environment', $salesChannelId) ?? 'test';
@@ -43,8 +57,11 @@ class CheckoutService
         return $this->easyApiService->createPayment($payload);
     }
 
-    /*
-     *
+    /**
+     * @param AsyncPaymentTransactionStruct $transaction
+     * @param SystemConfigService $systemConfigService
+     * @param SalesChannelContext $salesChannelContext
+     * @return array
      */
     private function collectRequestParams(AsyncPaymentTransactionStruct $transaction, SystemConfigService $systemConfigService, SalesChannelContext $salesChannelContext) {
         $orderEntity = $transaction->getOrder();
@@ -96,10 +113,10 @@ class CheckoutService
         return $data;
     }
 
+
     /**
-     *
-     * @param type $checkout
-     * @return type
+     * @param OrderEntity $orderEntity
+     * @return array
      */
     private function getOrderItems(OrderEntity $orderEntity) {
         $items = [];
@@ -124,6 +141,10 @@ class CheckoutService
         return $items;
     }
 
+    /**
+     * @param CalculatedTaxCollection $calculatedTaxCollection
+     * @return array
+     */
     private function getRowTaxes(CalculatedTaxCollection $calculatedTaxCollection) {
         $taxAmount = 0;
         $taxRate = 0;
@@ -135,9 +156,13 @@ class CheckoutService
                 'taxAmount' => $taxAmount];
     }
 
+    /**
+     * @param OrderEntity $orderEntity
+     * @return array
+     */
     private function shippingCostLine(OrderEntity $orderEntity) {
         return [
-            'reference' => 'shipping121',
+            'reference' => 'shipping',
             'name' => 'Shipping',
             'quantity' => 1,
             'unit' => 'pcs',
@@ -146,16 +171,22 @@ class CheckoutService
             'taxAmount' => 0,
             'grossTotalAmount' => $this->prepareAmount($orderEntity->getShippingTotal()),
             'netTotalAmount' => $this->prepareAmount( $orderEntity->getShippingTotal() )
-
-
         ];
     }
 
-    private function prepareAmount($amount) {
+    /**
+     * @param $amount
+     * @return int
+     */
+    private function prepareAmount($amount = 0) {
         return (int)round($amount * 100);
     }
 
-    public function stringFilter($string) {
+    /**
+     * @param $string
+     * @return string
+     */
+    public function stringFilter($string = '') {
         $string = substr($string, 0, 128);
         return preg_replace(self::ALLOWED_CHARACTERS_PATTERN, '', $string);
     }

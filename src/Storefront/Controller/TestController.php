@@ -60,14 +60,14 @@ class TestController extends StorefrontController
         $this->easyApiService = $easyApiService;
         $this->kernel = $kernel;
     }
-    
+
     /**
      * @RouteScope(scopes={"storefront"})
      * @Route("/nets/test", name="nets.test.controller", options={"seo"="false"}, methods={"GET"})
      */
     public function clearCart(SalesChannelContext $context)
     {
-        $context = Context::createDefaultContext();
+        /*        $context = Context::createDefaultContext();
 
 
         $criteria = new Criteria(['3623da704b704cf2b04e260723eb856d']);
@@ -83,7 +83,6 @@ class TestController extends StorefrontController
 
         $order = $this->orderRepository->search($criteria, $context)->first();
 
-        /* @var \Shopware\Core\Checkout\Order\OrderEntity $order */
         $items = $order->getLineItems();
 
         foreach ($order->getLineItems() as $item) {
@@ -92,7 +91,9 @@ class TestController extends StorefrontController
                  echo $calculatedTax->getTax();
              }
         }
+    */
 
+        echo 'Hello, world!';
 
         exit;
 

@@ -68,6 +68,11 @@ class Checkout implements AsynchronousPaymentHandlerInterface {
         $this->orderTransactionRepo = $orderTransactionRepo;
     }
 
+    /**
+     * @param AsyncPaymentTransactionStruct $transaction
+     * @param Request $request
+     * @param SalesChannelContext $salesChannelContext
+     */
     public function finalize(AsyncPaymentTransactionStruct $transaction, Request $request, SalesChannelContext $salesChannelContext): void {
         $transactionId = $transaction->getOrderTransaction()->getId();
         $salesChannelId = $transaction->getOrder()->getSalesChannelId();
@@ -123,6 +128,12 @@ class Checkout implements AsynchronousPaymentHandlerInterface {
         }
     }
 
+    /**
+     * @param AsyncPaymentTransactionStruct $transaction
+     * @param RequestDataBag $dataBag
+     * @param SalesChannelContext $salesChannelContext
+     * @return RedirectResponse
+     */
     public function pay(AsyncPaymentTransactionStruct $transaction, RequestDataBag $dataBag, SalesChannelContext $salesChannelContext): RedirectResponse {
         try {
             $result = $this->checkout->createPayment($transaction, $this->systemConfigService, $salesChannelContext);

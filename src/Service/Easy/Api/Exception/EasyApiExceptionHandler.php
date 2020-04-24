@@ -13,10 +13,19 @@ use \Symfony\Component\HttpKernel\KernelInterface;
  */
 class EasyApiExceptionHandler {
 
+    /**
+     * @var \Psr\Log\LoggerInterface
+     */
     private $logger;
 
+    /**
+     * @var KernelInterface
+     */
     private $kernel;
 
+    /**
+     * file for logging errors
+     */
     const LOG_FILE_NAME = 'nets-easy-log.log';
 
     public function __construct(\Psr\Log\LoggerInterface $logger, KernelInterface $kernel) {
@@ -24,6 +33,12 @@ class EasyApiExceptionHandler {
         $this->kernel = $kernel;
     }
 
+    /**
+     * @param \Nets\Checkout\Service\Easy\Api\Exception\EasyApiException $e
+     * @param array|null $add
+     * @return string
+     * @throws \Exception
+     */
     public function handle(EasyApiException $e, array $add = null) {
         $prefixMessage = 'Exception call to Easy Api. ' . PHP_EOL;
         $stackTrace = 'Stack trace: ' . PHP_EOL . $e->getTraceAsString();
