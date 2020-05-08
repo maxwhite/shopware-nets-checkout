@@ -2,29 +2,16 @@
 
 namespace Nets\Checkout\Storefront\Controller;
 
-use GuzzleHttp\Client;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Shopware\Storefront\Controller\StorefrontController;
 use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Criteria;
-use Shopware\Core\Framework\DataAbstractionLayer\Search\Filter\EqualsFilter;
 use Shopware\Core\System\SystemConfig\SystemConfigService;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\Routing\Annotation\RouteScope;
-use Symfony\Component\Routing\Annotation\Route;
-
-
-
-
+use Nets\Checkout\Service\ConfigService;
 use Nets\Checkout\Service\Easy\Api\Exception\EasyApiException;
-
 use Nets\Checkout\Service\Easy\Api\EasyApiService;
 
-use Nets\Checkout\Service\Easy\CheckoutService;
-
-use Monolog\Handler\StreamHandler;
-
-class TestController extends StorefrontController
+class PaymentController extends StorefrontController
 {
     private $orderRepository;
 
@@ -35,6 +22,8 @@ class TestController extends StorefrontController
      * @var SystemConfigService
      */
     public $systemConfigService;
+
+    private $configService;
 
     private $logger;
 
@@ -49,7 +38,8 @@ class TestController extends StorefrontController
                                 \Nets\Checkout\Service\Easy\CheckoutService $checkout,
                                 SystemConfigService $systemConfigService,
                                 EasyApiService $easyApiService,
-                                \Symfony\Component\HttpKernel\KernelInterface $kernel
+                                \Symfony\Component\HttpKernel\KernelInterface $kernel,
+                                ConfigService $configService
 
     ) {
         $this->orderRepository = $orderRepository;
@@ -59,6 +49,7 @@ class TestController extends StorefrontController
         $this->systemConfigService = $systemConfigService;
         $this->easyApiService = $easyApiService;
         $this->kernel = $kernel;
+        $this->configService = $configService;
     }
 
     /**
@@ -67,38 +58,10 @@ class TestController extends StorefrontController
      */
     public function clearCart(SalesChannelContext $context)
     {
-        /*        $context = Context::createDefaultContext();
-
-
-        $criteria = new Criteria(['3623da704b704cf2b04e260723eb856d']);
-        $criteria->addAssociation('lineItems.payload')
-                  ->addAssociation('deliveries.shippingCosts')
-                  ->addAssociation('deliveries.shippingMethod')
-                  ->addAssociation('deliveries.shippingOrderAddress.country')
-                  ->addAssociation('cartPrice.calculatedTaxes')
-                  ->addAssociation('transactions.paymentMethod')
-                  ->addAssociation('currency')
-                  ->addAssociation('addresses.country');
-
-
-        $order = $this->orderRepository->search($criteria, $context)->first();
-
-        $items = $order->getLineItems();
-
-        foreach ($order->getLineItems() as $item) {
-             foreach( $item->getPrice()->getCalculatedTaxes() as $calculatedTax) {
-                 echo $calculatedTax->getTaxRate();
-                 echo $calculatedTax->getTax();
-             }
-        }
-    */
-
-        echo 'Hello, world!';
-
-        exit;
 
 
     }
+
     /**
      * @RouteScope(scopes={"storefront"})
      * @Route("/nets/caheckout/validate", name="nets.test.controller.validate", options={"seo"="false"}, methods={"GET"})

@@ -9,6 +9,7 @@ use Nets\Checkout\Service\Easy\Api\EasyApiService;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Nets\Checkout\Service\Easy\Api\Exception\EasyApiException;
+use Nets\Checkout\Service\ConfigService;
 
 class CheckoutService
 {
@@ -16,6 +17,11 @@ class CheckoutService
      * @var EasyApiService
      */
     private $easyApiService;
+
+    /**
+     * @var ConfigService
+     */
+    private $configService;
 
     /**
      * regexp for filtering strings
@@ -27,12 +33,14 @@ class CheckoutService
     /**
      * CheckoutService constructor.
      * @param EasyApiService $easyApiService
+     * @param ConfigService $configService
      */
-    public function __construct(EasyApiService $easyApiService)
+    public function __construct(EasyApiService $easyApiService,
+                                ConfigService $configService)
     {
         $this->easyApiService = $easyApiService;
-        $this->salesChannelContext = 1;
 
+        $this->configService = $configService;
     }
 
     /**
@@ -43,14 +51,8 @@ class CheckoutService
      * @throws EasyApiException
      */
     public function createPayment(AsyncPaymentTransactionStruct $transaction, SystemConfigService $systemConfigService, SalesChannelContext $salesChannelContext) {
-        $salesChannelId = $transaction->getOrder()->getSalesChannelId();
-        $environment = $systemConfigService->get('NetsCheckout.config.environment', $salesChannelId) ?? 'test';
-        if('live' ==  $environment) {
-            $secretKey = $systemConfigService->get('NetsCheckout.config.liveSecretKey', $salesChannelId);
-        }
-        if('test' ==  $environment) {
-            $secretKey = $systemConfigService->get('NetsCheckout.config.testSecretKey', $salesChannelId);
-        }
+        $environment = $this->configService->getEnvironment($salesChannelContext);
+        $secretKey = $this->configService->getSecretKey($salesChannelContext);
         $this->easyApiService->setEnv($environment);
         $this->easyApiService->setAuthorizationKey($secretKey);
         $payload = json_encode($this->collectRequestParams($transaction,  $systemConfigService, $salesChannelContext));
@@ -126,7 +128,7 @@ class CheckoutService
 
         $items[] = [
                 'reference' => $item->getProductId(),
-                'name' => $item->getProductId(),
+                'name' => $this->stringFilter($item->getLabel()),
                 'quantity' => $item->getQuantity(),
                 'unit' => 'pcs',
                 'unitPrice' => $this->prepareAmount($item->getUnitPrice() - $taxes['taxAmount']),
