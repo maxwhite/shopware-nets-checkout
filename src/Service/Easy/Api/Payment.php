@@ -42,8 +42,9 @@ class Payment
         return $this->paymentObj->payment->checkout->url;
     }
 
-    public function getFirstChargeId() {
-        if(isset($this->paymentObj->payment->charges)) {
+    public function getFirstChargeId()
+    {
+        if (isset($this->paymentObj->payment->charges)) {
             $charges = current($this->paymentObj->payment->charges);
             return $charges->chargeId;
         }

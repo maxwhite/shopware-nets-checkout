@@ -97,8 +97,11 @@ class Checkout implements AsynchronousPaymentHandlerInterface {
      */
     public function finalize(AsyncPaymentTransactionStruct $transaction, Request $request, SalesChannelContext $salesChannelContext): void {
         $transactionId = $transaction->getOrderTransaction()->getId();
-        $environment = $this->configService->getEnvironment($salesChannelContext);
-        $secretKey = $this->configService->getSecretKey($salesChannelContext);
+
+        $environment = $this->configService->getEnvironment($salesChannelContext->getSalesChannel()->getId());
+        $secretKey = $this->configService->getSecretKey($salesChannelContext->getSalesChannel()->getId());
+
+
         try {
             $this->easyApiService->setEnv($environment);
             $this->easyApiService->setAuthorizationKey($secretKey);
@@ -109,10 +112,13 @@ class Checkout implements AsynchronousPaymentHandlerInterface {
             $transactionId = $transaction->getOrderTransaction()->getId();
             $context = $salesChannelContext->getContext();
 
+
+
             $this->orderTransactionRepo->update([[
                 'id' => $transactionId,
                 'customFields' => [
-                    'nets_easy_payment_details' => ['transaction_id' => $_REQUEST['paymentid']],
+                    'nets_easy_payment_details' =>
+                        ['transaction_id' => $_REQUEST['paymentid'], 'can_capture' => true],
                 ],
             ]], $context);
 
@@ -145,6 +151,7 @@ class Checkout implements AsynchronousPaymentHandlerInterface {
             $this->easyApiExceptionHandler->handle($e);
             throw new AsyncPaymentProcessException($transaction->getOrderTransaction()->getId() , $e->getMessage());
         }
-        return new RedirectResponse($PaymentCreateResult['hostedPaymentPageUrl']);
+        $language = $this->configService->getLanguage($salesChannelContext->getSalesChannel()->getId());
+        return new RedirectResponse($PaymentCreateResult['hostedPaymentPageUrl']  . '&language='  .  $language );
     }
 }

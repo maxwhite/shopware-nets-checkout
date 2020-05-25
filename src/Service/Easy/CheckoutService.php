@@ -10,6 +10,9 @@ use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 use Nets\Checkout\Service\Easy\Api\Exception\EasyApiException;
 use Nets\Checkout\Service\ConfigService;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
+use Shopware\Core\Framework\DataAbstractionLayer\EntityRepositoryInterface;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 
 class CheckoutService
 {
@@ -23,6 +26,16 @@ class CheckoutService
      */
     private $configService;
 
+    /** @var EntityRepositoryInterface */
+    private $transactionRepository;
+
+
+    /**
+     * @var OrderTransactionStateHandler
+     */
+    private $transactionStateHandler;
+
+
     /**
      * regexp for filtering strings
      */
@@ -34,13 +47,17 @@ class CheckoutService
      * CheckoutService constructor.
      * @param EasyApiService $easyApiService
      * @param ConfigService $configService
+     * @param EntityRepositoryInterface $transactionRepository
      */
     public function __construct(EasyApiService $easyApiService,
-                                ConfigService $configService)
+                                ConfigService $configService,
+                                EntityRepositoryInterface $transactionRepository,
+                                OrderTransactionStateHandler $orderTransactionStateHandler)
     {
         $this->easyApiService = $easyApiService;
-
         $this->configService = $configService;
+        $this->transactionRepository = $transactionRepository;
+        $this->transactionStateHandler = $orderTransactionStateHandler;
     }
 
     /**
@@ -51,8 +68,8 @@ class CheckoutService
      * @throws EasyApiException
      */
     public function createPayment(AsyncPaymentTransactionStruct $transaction, SystemConfigService $systemConfigService, SalesChannelContext $salesChannelContext) {
-        $environment = $this->configService->getEnvironment($salesChannelContext);
-        $secretKey = $this->configService->getSecretKey($salesChannelContext);
+        $environment = $this->configService->getEnvironment($salesChannelContext->getSalesChannel()->getId());
+        $secretKey = $this->configService->getSecretKey($salesChannelContext->getSalesChannel()->getId());
         $this->easyApiService->setEnv($environment);
         $this->easyApiService->setAuthorizationKey($secretKey);
         $payload = json_encode($this->collectRequestParams($transaction,  $systemConfigService, $salesChannelContext));
@@ -144,6 +161,16 @@ class CheckoutService
     }
 
     /**
+     * @param OrderEntity $orderEntity
+     * @return array
+     */
+    public function getTransactionOrderItems(OrderEntity $orderEntity) {
+
+        return ['amount' => $this->prepareAmount($orderEntity->getAmountTotal()),
+         'orderItems' => $this->getOrderItems($orderEntity)];
+    }
+
+    /**
      * @param CalculatedTaxCollection $calculatedTaxCollection
      * @return array
      */
@@ -192,4 +219,68 @@ class CheckoutService
         $string = substr($string, 0, 128);
         return preg_replace(self::ALLOWED_CHARACTERS_PATTERN, '', $string);
     }
+
+    /**
+     * @param OrderEntity $orderEntity
+     * @param $salesChannelContextId
+     * @param $paymentId
+     * @return false|string
+     */
+    public function chargePayment(OrderEntity $orderEntity, $salesChannelContextId, \Shopware\Core\Framework\Context $context, $paymentId) {
+        $transaction = $orderEntity->getTransactions()->first();
+        $environment = $this->configService->getEnvironment($salesChannelContextId);
+        $secretKey = $this->configService->getSecretKey($salesChannelContextId);
+        $this->easyApiService->setEnv($environment);
+        $this->easyApiService->setAuthorizationKey($secretKey);
+        $payload = json_encode($this->getTransactionOrderItems($orderEntity));
+        $this->easyApiService->chargePayment($paymentId, $payload);
+        $this->updateTransactionCustomFields($transaction, $context, ['can_capture' => false, 'can_refund' => true]);
+        $this->transactionStateHandler->pay($transaction->getId(), $context);
+        return $payload;
+    }
+
+    /**
+     * @param OrderEntity $orderEntity
+     * @param $salesChannelContextId
+     * @param $chargeId
+     * @return false|string
+     * @throws EasyApiException
+     */
+    public function refundPayment(OrderEntity $orderEntity, $salesChannelContextId, \Shopware\Core\Framework\Context $context, $chargeId) {
+        $transaction = $orderEntity->getTransactions()->first();
+        $environment = $this->configService->getEnvironment($salesChannelContextId);
+        $secretKey = $this->configService->getSecretKey($salesChannelContextId);
+        $this->easyApiService->setEnv($environment);
+        $this->easyApiService->setAuthorizationKey($secretKey);
+        $payment = $this->easyApiService->getPayment($chargeId);
+        $chargeId = $payment->getFirstChargeId();
+        $payload = json_encode($this->getTransactionOrderItems($orderEntity));
+        $this->easyApiService->refundPayment($chargeId, $payload);
+        $this->updateTransactionCustomFields($transaction, $context, ['can_refund' => false]);
+        $this->transactionStateHandler->refund($transaction->getId(), $context);
+        return $payload;
+    }
+
+    /**
+     * @param OrderTransactionEntity $transaction
+     * @param $context
+     * @param array $fields
+     */
+    private function updateTransactionCustomFields(OrderTransactionEntity $transaction, $context ,$fields = []) {
+        $customFields = $transaction->getCustomFields();
+
+        $fields_arr = $customFields['nets_easy_payment_details'];
+
+        $merged = array_merge($fields_arr, $fields);
+
+        $customFields['nets_easy_payment_details'] = $merged;
+
+        $update = [
+            'id'           => $transaction->getId(),
+            'customFields' => $customFields,
+        ];
+        $transaction->setCustomFields($customFields);
+        $this->transactionRepository->update([$update], $context);
+    }
+
 }

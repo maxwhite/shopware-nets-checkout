@@ -62,7 +62,8 @@ class EasyApiService {
     /**
      *
      * @param string $paymentId
-     * @return \App\Payment
+     * @return Payment
+     * @throws EasyApiException
      */
     public function getPayment(string $paymentId) {
       $url = $this->getGetPaymentUrl($paymentId);
@@ -77,14 +78,12 @@ class EasyApiService {
 
     public function chargePayment(string $paymentId, string $data) {
       $url = $this->getChargePaymentUrl($paymentId);
-      $this->client->post($url, $data);
-      $this->handleResponse($this->client);
+      $this->handleResponse($this->client->post($url, $data));
     }
 
     public function refundPayment(string $chargeId, string $data) {
       $url = $this->getRefundPaymentUrl($chargeId);
-      $this->client->post($url, $data);
-      $this->handleResponse($this->client);
+      $this->handleResponse($this->client->post($url, $data));
     }
 
     public function voidPayment(string $paymentId, string $data) {

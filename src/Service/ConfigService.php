@@ -24,32 +24,31 @@ class ConfigService
     }
 
     /**
-     * @param SalesChannelContext $salesChannelContext
+     * @param $salesChannelContextId
      * @return array|mixed|null|string
      */
-    public function getSecretKey(SalesChannelContext $salesChannelContext) {
+    public function getSecretKey($salesChannelContextId) {
         $env = 'testSecretKey';
-        if('live' == $this->getEnvironment($salesChannelContext)) {
+        if('live' == $this->getEnvironment($salesChannelContextId)) {
             $env = 'liveSecretKey';
         }
-
-        return $this->systemConfigService->get( self::CONFIG_PREFIX . $env, $salesChannelContext->getSalesChannel()->getId());
+        return $this->systemConfigService->get( self::CONFIG_PREFIX . $env, $salesChannelContextId);
    }
 
     /**
-     * @param SalesChannelContext $salesChannelContext
+     * @param $salesChannelContextId
      * @return array|mixed|null|string
      */
-    public function getEnvironment(SalesChannelContext $salesChannelContext) {
-        return $this->systemConfigService->get( self::CONFIG_PREFIX  . 'enviromnent', $salesChannelContext->getSalesChannel()->getId());
+    public function getEnvironment($salesChannelContextId) {
+        return $this->systemConfigService->get( self::CONFIG_PREFIX  . 'enviromnent', $salesChannelContextId);
     }
 
     /**
-     * @param SalesChannelContext $salesChannelContext
+     * @param $salesChannelContextId
      * @return array|mixed|null|string
      */
-    public function getLanguage(SalesChannelContext $salesChannelContext) {
-        return $this->systemConfigService->get( self::CONFIG_PREFIX  . 'language', $salesChannelContext->getSalesChannel()->getId());
+    public function getLanguage($salesChannelContextId) {
+        return $this->systemConfigService->get( self::CONFIG_PREFIX  . 'language', $salesChannelContextId);
     }
 
 }
